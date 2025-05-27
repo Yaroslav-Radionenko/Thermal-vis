@@ -42,8 +42,20 @@ const unsigned long debounceDelay = 50;
 unsigned long del_menu = 0;
 
 // Екран
-int currentScreen = -1;
-int previousScreen = -2;
+int menuIndex = 0;
+int submenuIndex = 0;
+
+bool menuVisible = false;
+bool inSubmenu = false;
+
+// Режими екранів
+const char* mainMenu[] = {"Palette", "Pause", "Text Temp."};
+const int mainMenuSize = sizeof(mainMenu)/ sizeof(mainMenu[0]);
+
+const char* colourModes[] = {"Rainbow", "Fire", "Grey"};
+const int colourModesSizes = sizeof(colourModes)/ sizeof(colourModes[0]);
+
+int currentColourMode = 0;
 
 // Кнопки
 bool btnPressed_ok = true;
@@ -98,17 +110,30 @@ void loop() {
   }
     if (reading_left != lastButtonState_left) {
     lastDebounceTime = millis();
+    del_menu = millis();
   }
     if (reading_right != lastButtonState_right) {
     lastDebounceTime = millis();
+    del_menu = millis();
   }
 
   if ((millis() - lastDebounceTime) > debounceDelay) {
     if (reading_ok == LOW && !btnPressed_ok) {
       digitalWrite(led,HIGH);
       btnPressed_ok = true;  				// Кнопка натиснута
-      drawMenu();
       
+      if (!menuVisible){
+        menuVisible = true;
+        drawMenu();
+      //} else if (!inSubmenu = true){
+      //  inSubmenu = true;
+      //  drawSubmenu ();
+      //} else {
+      //  currentColorMode = submenuIndex;
+      //  inSubmenu = false;
+      //  drawMenu();
+      }
+
     }
 
     if (currentMillis - del_menu >= 5000){
@@ -121,15 +146,31 @@ void loop() {
 
   if ((millis() - lastDebounceTime) > debounceDelay) {
     if (reading_left == LOW && !btnPressed_left) {
-      btnPressed_left = true;  				// Кнопка натиснута
-      currentScreen = (currentScreen - 1) % 6;  // Перемикання екранів
+      btnPressed_left = true;
+      digitalWrite(led,HIGH);
+      
+      if (menuVisible){
+        
+      }
     }
+
+    if (currentMillis - del_menu >= 5000){
+      tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+    }
+    digitalWrite(led,LOW);
   }
+
+
+
   if ((millis() - lastDebounceTime) > debounceDelay) {
     if (reading_right == LOW && !btnPressed_right) {
-      btnPressed_right = true;  				// Кнопка натиснута
-      currentScreen = (currentScreen + 1) % 6;  // Перемикання екранів
+      btnPressed_right = true;
+      digitalWrite(led,HIGH);
     }
+    if (currentMillis - del_menu >= 5000){
+      tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+    }
+    digitalWrite(led,LOW);
   }
 
   if (currentMillis - lastUpdate >= updateInterval) { // оновлення кожні 100 мс
@@ -185,5 +226,15 @@ void drawMenu() {
   tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(1);
   tft.setCursor(2, 128);
-  tft.print("Menu");
+  tft.print("<");
+  tft.print(mainMenu[menuIndex]);
+  tft.print(">");
+}
+
+void drawSubmenu (){
+  tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+  tft.setTextColor(ST7735_WHITE);
+  tft.setTextSize(1);
+  tft.setCursor(2, 128);
+  tft.print(colourModes[submenuIndex]);
 }
