@@ -37,7 +37,9 @@ const int usableHeight = 160 - 32;
 unsigned long lastUpdate = 0;
 const unsigned long updateInterval = 100;
 unsigned long lastUpdateTime = 0;
+
 unsigned long lastDebounceTime = 0;
+
 const unsigned long debounceDelay = 50;
 unsigned long del_menu = 0;
 
@@ -98,6 +100,7 @@ void setup() {
 }
 
 void loop() {
+
   int reading_ok = digitalRead(btn_ok);
   int reading_left = digitalRead(btn_left);
   int reading_right = digitalRead(btn_right);
@@ -125,15 +128,15 @@ void loop() {
       if (!menuVisible){
         menuVisible = true;
         drawMenu();
-      //} else if (!inSubmenu = true){
-      //  inSubmenu = true;
-      //  drawSubmenu ();
-      //} else {
-      //  currentColorMode = submenuIndex;
-      //  inSubmenu = false;
-      //  drawMenu();
+      } else if (!inSubmenu){
+        inSubmenu = true;
+        drawSubmenu ();
+      } else {
+        currentColourMode = submenuIndex;
+        inSubmenu = false;
+        drawMenu();
       }
-
+      
     }
 
     if (currentMillis - del_menu >= 5000){
@@ -150,28 +153,53 @@ void loop() {
       digitalWrite(led,HIGH);
       
       if (menuVisible){
-        
+        if (!inSubmenu){
+          menuIndex = (menuIndex - 1 + mainMenuSize) % mainMenuSize;
+          drawMenu();
+        }else {
+          submenuIndex = (submenuIndex - 1 + colourModesSizes) % colourModesSizes;
+          drawSubmenu ();
+        }
       }
     }
 
-    if (currentMillis - del_menu >= 5000){
+    if (currentMillis - del_menu >= 5000 && menuVisible){
       tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+      menuVisible = false;
+      inSubmenu = false;
     }
+
     digitalWrite(led,LOW);
   }
 
-
+  lastButtonState_left = reading_left;
 
   if ((millis() - lastDebounceTime) > debounceDelay) {
     if (reading_right == LOW && !btnPressed_right) {
       btnPressed_right = true;
       digitalWrite(led,HIGH);
+
+      if (menuVisible){
+        if (!inSubmenu){
+          menuIndex = (menuIndex + 1) % mainMenuSize;
+          drawMenu();
+        }else {
+          submenuIndex = (submenuIndex + 1) % colourModesSizes;
+          drawSubmenu ();
+        }
+      }
     }
-    if (currentMillis - del_menu >= 5000){
+
+    if (currentMillis - del_menu >= 5000 && menuVisible){
       tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+      menuVisible = false;
+      inSubmenu = false;
     }
+    
     digitalWrite(led,LOW);
   }
+
+  lastButtonState_right = reading_right;
 
   if (currentMillis - lastUpdate >= updateInterval) { // оновлення кожні 100 мс
     lastUpdate = currentMillis;
