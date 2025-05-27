@@ -51,13 +51,20 @@ bool menuVisible = false;
 bool inSubmenu = false;
 
 // Режими екранів
-const char* mainMenu[] = {"Palette", "Pause", "Text Temp."};
+const char* mainMenu[] = {"Palette","Text Temp." , "Pause"};
 const int mainMenuSize = sizeof(mainMenu)/ sizeof(mainMenu[0]);
 
 const char* colourModes[] = {"Rainbow", "Fire", "Grey"};
 const int colourModesSizes = sizeof(colourModes)/ sizeof(colourModes[0]);
 
 int currentColourMode = 0;
+
+const char* tempModes[] = {"Min/Max/Avg", "Center temp.", "All info"};
+const int tempModesSizes = sizeof(tempModes)/ sizeof(tempModes[0]);
+
+int currentTempMode = 0;
+
+bool isPaused = false;
 
 // Кнопки
 bool btnPressed_ok = true;
@@ -132,11 +139,21 @@ void loop() {
         inSubmenu = true;
         drawSubmenu ();
       } else {
-        currentColourMode = submenuIndex;
-        inSubmenu = false;
-        drawMenu();
+        if (menuIndex == 0){
+          currentColourMode = submenuIndex;
+          inSubmenu = false;
+          drawMenu();
+        }else if(menuIndex == 1){
+          currentTempMode = submenuIndex;
+          inSubmenu = false;
+          drawMenu();
+        }else if(menuIndex == 2){
+          isPaused = !isPaused;
+          inSubmenu = false;
+          drawMenu();
+        }
       }
-      
+
     }
 
     if (currentMillis - del_menu >= 5000){
@@ -157,8 +174,13 @@ void loop() {
           menuIndex = (menuIndex - 1 + mainMenuSize) % mainMenuSize;
           drawMenu();
         }else {
-          submenuIndex = (submenuIndex - 1 + colourModesSizes) % colourModesSizes;
-          drawSubmenu ();
+          if (menuIndex == 0){
+            submenuIndex = (submenuIndex - 1 + colourModesSizes) % colourModesSizes;
+            drawSubmenu ();
+          }else if (menuIndex == 1){
+            submenuIndex = (submenuIndex - 1 + tempModesSizes) % tempModesSizes;
+            drawSubmenu ();
+          }
         }
       }
     }
@@ -184,8 +206,13 @@ void loop() {
           menuIndex = (menuIndex + 1) % mainMenuSize;
           drawMenu();
         }else {
-          submenuIndex = (submenuIndex + 1) % colourModesSizes;
-          drawSubmenu ();
+          if (menuIndex == 0){
+            submenuIndex = (submenuIndex + 1) % colourModesSizes;
+            drawSubmenu ();
+          }else if (menuIndex == 1){
+            submenuIndex = (submenuIndex + 1) % tempModesSizes;
+            drawSubmenu ();
+          }
         }
       }
     }
@@ -204,7 +231,7 @@ void loop() {
   if (currentMillis - lastUpdate >= updateInterval) { // оновлення кожні 100 мс
     lastUpdate = currentMillis;
 
-    amg.readPixels(pixels); // Зчитування масиву ьемператур 
+    amg.readPixels(pixels); // Зчитування масиву температур 
 
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -216,7 +243,6 @@ void loop() {
 
         if (yPixel >= usableHeight) continue;
 
-        // Визначення кольору (градієнт: синій-холодно, червоний-гаряче)
         uint16_t colour = mapTemperatureToColor(temp);
 
         tft.fillRect(x * boxSize, y * boxSize, boxSize, boxSize, colour);
@@ -226,6 +252,12 @@ void loop() {
 
   if (reading_ok == HIGH) {
     btnPressed_ok = false;
+  }
+  if (reading_left == HIGH) {
+    btnPressed_left = false;
+  }
+  if (reading_right == HIGH) {
+    btnPressed_right = false;
   }
 
 }
@@ -241,12 +273,23 @@ uint16_t mapTemperatureToColor(float temp) {
 
   int value = map(temp * 100, tMin * 100, tMax * 100, 0, 255);
 
-  // Червоне – тепле
-  uint8_t red = value;
-  uint8_t blue = 255 - value;
-  uint8_t green = 0;
-
-  return tft.color565(red, green, blue);
+  switch(currentColourMode) {
+    case 0:
+      return tft.color565(value, 0, 255 - value); // Червоне – тепле
+      break;
+    case 1:
+      return tft.color565(value, 0, 255 - value); //  – тепле
+      break; 
+    case 2:
+      return tft.color565(value, value/4, 0); //  – тепле
+      break;
+    case 3:
+      return tft.color565(value, value, value); //  – тепле
+      break; 
+    default:
+      return ST7735_BLACK;
+    break;
+  }
 }
 
 void drawMenu() {
@@ -264,5 +307,12 @@ void drawSubmenu (){
   tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(1);
   tft.setCursor(2, 128);
-  tft.print(colourModes[submenuIndex]);
+
+  if(menuIndex == 0){
+    tft.print(colourModes[submenuIndex]);
+  }else if(menuIndex == 1){
+    tft.print(tempModes[submenuIndex]);
+  }else if(menuIndex == 2){
+    tft.print(isPaused ? "Running" : "Paused");
+  }
 }
