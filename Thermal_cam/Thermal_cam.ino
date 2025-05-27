@@ -59,7 +59,7 @@ const int colourModesSizes = sizeof(colourModes)/ sizeof(colourModes[0]);
 
 int currentColourMode = 0;
 
-const char* tempModes[] = {"Min/Max/Avg", "Center temp.", "All info"};
+const char* tempModes[] = {"Clear", "Min/Max/Avg", "Center temp.", "All info"};
 const int tempModesSizes = sizeof(tempModes)/ sizeof(tempModes[0]);
 
 int currentTempMode = 0;
@@ -145,6 +145,7 @@ void loop() {
           drawMenu();
         }else if(menuIndex == 1){
           currentTempMode = submenuIndex;
+          tft.fillRect(0, 128, 128, 32, ST7735_BLACK);
           inSubmenu = false;
           drawMenu();
         }else if(menuIndex == 2){
@@ -157,7 +158,7 @@ void loop() {
     }
 
     if (currentMillis - del_menu >= 5000){
-      tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+      tft.fillRect(0, 128, 74, 8, ST7735_BLACK);
     }
     digitalWrite(led,LOW);
   }
@@ -180,13 +181,16 @@ void loop() {
           }else if (menuIndex == 1){
             submenuIndex = (submenuIndex - 1 + tempModesSizes) % tempModesSizes;
             drawSubmenu ();
+          }else if (menuIndex == 2){
+            isPaused = !isPaused;
+            drawSubmenu ();
           }
         }
       }
     }
 
     if (currentMillis - del_menu >= 5000 && menuVisible){
-      tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+      tft.fillRect(0, 128, 74, 8, ST7735_BLACK);
       menuVisible = false;
       inSubmenu = false;
     }
@@ -218,7 +222,7 @@ void loop() {
     }
 
     if (currentMillis - del_menu >= 5000 && menuVisible){
-      tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+      tft.fillRect(0, 128, 74, 8, ST7735_BLACK);
       menuVisible = false;
       inSubmenu = false;
     }
@@ -228,10 +232,25 @@ void loop() {
 
   lastButtonState_right = reading_right;
 
-  if (currentMillis - lastUpdate >= updateInterval) { // оновлення кожні 100 мс
+  if (!isPaused && currentMillis - lastUpdate >= updateInterval) { // оновлення кожні 100 мс
     lastUpdate = currentMillis;
 
     amg.readPixels(pixels); // Зчитування масиву температур 
+
+    float minT = 999, maxT = -999, sumT = 0;
+    float centerT = pixels[4 * gridSize + 4];
+
+    for (int i = 0; i < 64; i++){
+      sumT += pixels[i];
+      if (pixels [i] < minT){
+        minT = pixels[i];
+      }
+      if (pixels [i] > maxT){
+        maxT = pixels[i];
+      }
+    }
+
+    float avgT = sumT / 64;
 
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -248,6 +267,9 @@ void loop() {
         tft.fillRect(x * boxSize, y * boxSize, boxSize, boxSize, colour);
       }
     }
+    
+    drawTemp(minT, maxT, avgT, centerT);
+
   }
 
   if (reading_ok == HIGH) {
@@ -259,7 +281,7 @@ void loop() {
   if (reading_right == HIGH) {
     btnPressed_right = false;
   }
-
+  
 }
 
 uint16_t mapTemperatureToColor(float temp) {
@@ -275,7 +297,7 @@ uint16_t mapTemperatureToColor(float temp) {
 
   switch(currentColourMode) {
     case 0:
-      return tft.color565(value, 0, 255 - value); // Червоне – тепле
+      return tft.color565(value, value, value); // Червоне – тепле
       break;
     case 1:
       return tft.color565(value, 0, 255 - value); //  – тепле
@@ -284,7 +306,7 @@ uint16_t mapTemperatureToColor(float temp) {
       return tft.color565(value, value/4, 0); //  – тепле
       break;
     case 3:
-      return tft.color565(value, value, value); //  – тепле
+      return tft.color565(value, 0, 255 - value); // Червоне – тепле
       break; 
     default:
       return ST7735_BLACK;
@@ -293,7 +315,7 @@ uint16_t mapTemperatureToColor(float temp) {
 }
 
 void drawMenu() {
-  tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+  tft.fillRect(0, 128, 74, 8, ST7735_BLACK);
   tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(1);
   tft.setCursor(2, 128);
@@ -303,7 +325,7 @@ void drawMenu() {
 }
 
 void drawSubmenu (){
-  tft.fillRect(0, 128, 128, 20, ST7735_BLACK);
+  tft.fillRect(0, 128, 74, 8, ST7735_BLACK);
   tft.setTextColor(ST7735_WHITE);
   tft.setTextSize(1);
   tft.setCursor(2, 128);
@@ -314,5 +336,56 @@ void drawSubmenu (){
     tft.print(tempModes[submenuIndex]);
   }else if(menuIndex == 2){
     tft.print(isPaused ? "Running" : "Paused");
+  }
+}
+
+void drawTemp (float minT, float maxT, float avgT, float centerT){
+  tft.setTextColor(ST7735_WHITE);
+
+    if (currentTempMode == 0) {
+    // Clear: нічого не малюємо
+  }
+
+  if (currentTempMode == 1) {
+    // Min/Max/Avg
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+    tft.setCursor(74, 130);
+    tft.print("Min:");
+    tft.print(minT, 1);
+    tft.setCursor(74, 140);
+    tft.print("Max:");
+    tft.print(maxT, 1);
+    tft.setCursor(74, 150);
+    tft.print("Avg:");
+    tft.print(avgT, 1);
+  }
+
+  if (currentTempMode == 2) {
+    // Center Temp
+    tft.setTextSize(2);
+    tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);
+    tft.setCursor(40, 140); // нижній правий кут
+    tft.print(centerT, 1);
+  }
+
+  if (currentTempMode == 3) {
+    // All Info
+    tft.setTextSize(1);
+    tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
+    tft.setCursor(74, 130);
+    tft.print("Min:");
+    tft.print(minT, 1);
+    tft.setCursor(74, 140);
+    tft.print("Max:");
+    tft.print(maxT, 1);
+    tft.setCursor(74, 150);
+    tft.print("Avg:");
+    tft.print(avgT, 1);
+
+    tft.setTextSize(2);
+    tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);
+    tft.setCursor(20, 140);
+    tft.print(centerT, 1);
   }
 }
