@@ -54,7 +54,7 @@ bool inSubmenu = false;
 const char* mainMenu[] = {"Palette", "Text Temp." , "Pause"};
 const int mainMenuSize = sizeof(mainMenu)/ sizeof(mainMenu[0]);
 
-const char* colourModes[] = {"Rainbow", "Fire", "Grey"};
+const char* colourModes[] = {"White-hot", "Black-hot", "Red-hot", "Red/blue", "Rainbow"};
 const int colourModesSizes = sizeof(colourModes)/ sizeof(colourModes[0]);
 
 int currentColourMode = 0;
@@ -136,6 +136,7 @@ void loop() {
         menuVisible = true;
         drawMenu();
       } else if (!inSubmenu){
+        submenuIndex = 0;
         if(menuIndex == 2){
           isPaused = !isPaused;
           inSubmenu = false;
@@ -287,7 +288,7 @@ void loop() {
 uint16_t mapTemperatureToColor(float temp) {
   //  Межі градієнту
   float tMin = 22.0;
-  float tMax = 35.0;
+  float tMax = 32.0;
 
   // Обмеження діапазону
   if (temp < tMin) temp = tMin;
@@ -300,13 +301,26 @@ uint16_t mapTemperatureToColor(float temp) {
       return tft.color565(value, value, value); // Червоне – тепле
       break;
     case 1:
-      return tft.color565(value, 0, 255 - value); //  – тепле
+      return tft.color565(255 - value, 255 - value, 255 - value); // Біле – тепле
       break; 
     case 2:
-      return tft.color565(value, value/4, 0); //  – тепле
+      return tft.color565(value, value/4, 0); //  Червоне – тепле
       break;
     case 3:
-      return tft.color565(value, 0, 255 - value); // Червоне – тепле
+      return tft.color565(value, 0, 255 - value); // Червоне – тепле, синє холодне
+      break; 
+    case 4:
+      float f = value / 255.0f;
+      if (f<0.33f){
+        float t = f/0.33f;
+        return tft.color565((1-t) * 128 + t * 0, 0, (1-t) * 128 + t * 255);
+      } else if (f<0.66f){
+        float t = (f - 0.33f) / 0.33f;
+        return tft.color565(t * 255, t * 255, (1-t) * 255);
+      }else {
+        float t = (f - 0.66f) / 0.34f;
+        return tft.color565( 255, (1 - t) * 255, 0);
+      }
       break; 
     default:
       return ST7735_BLACK;
@@ -334,8 +348,6 @@ void drawSubmenu (){
     tft.print(colourModes[submenuIndex]);
   }else if(menuIndex == 1){
     tft.print(tempModes[submenuIndex]);
-  //}else if(menuIndex == 2){
-    
   }
 }
 
