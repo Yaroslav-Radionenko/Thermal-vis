@@ -51,7 +51,7 @@ bool menuVisible = false;
 bool inSubmenu = false;
 
 // Режими екранів
-const char* mainMenu[] = {"Palette","Text Temp." , "Pause"};
+const char* mainMenu[] = {"Palette", "Text Temp." , "Pause"};
 const int mainMenuSize = sizeof(mainMenu)/ sizeof(mainMenu[0]);
 
 const char* colourModes[] = {"Rainbow", "Fire", "Grey"};
@@ -136,8 +136,14 @@ void loop() {
         menuVisible = true;
         drawMenu();
       } else if (!inSubmenu){
+        if(menuIndex == 2){
+          isPaused = !isPaused;
+          inSubmenu = false;
+          drawMenu();
+        }else {
         inSubmenu = true;
         drawSubmenu ();
+        }
       } else {
         if (menuIndex == 0){
           currentColourMode = submenuIndex;
@@ -145,11 +151,8 @@ void loop() {
           drawMenu();
         }else if(menuIndex == 1){
           currentTempMode = submenuIndex;
+          tft.fillRect(74, 128, 128, 32, ST7735_BLACK);
           tft.fillRect(0, 128, 128, 32, ST7735_BLACK);
-          inSubmenu = false;
-          drawMenu();
-        }else if(menuIndex == 2){
-          isPaused = !isPaused;
           inSubmenu = false;
           drawMenu();
         }
@@ -180,9 +183,6 @@ void loop() {
             drawSubmenu ();
           }else if (menuIndex == 1){
             submenuIndex = (submenuIndex - 1 + tempModesSizes) % tempModesSizes;
-            drawSubmenu ();
-          }else if (menuIndex == 2){
-            isPaused = !isPaused;
             drawSubmenu ();
           }
         }
@@ -334,8 +334,8 @@ void drawSubmenu (){
     tft.print(colourModes[submenuIndex]);
   }else if(menuIndex == 1){
     tft.print(tempModes[submenuIndex]);
-  }else if(menuIndex == 2){
-    tft.print(isPaused ? "Running" : "Paused");
+  //}else if(menuIndex == 2){
+    
   }
 }
 
