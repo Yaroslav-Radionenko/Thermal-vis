@@ -26,6 +26,16 @@ const int gridSize = 8;
 const int boxSize = 16;
 float pixels[64];
 
+const float minWindowSize = 5.0;
+const float maxWindowSize = 20.0;
+const float antiNoise = 3.15;
+
+float tMin = 22;
+float tMax = 30;
+
+float filtredMinT = tMin;
+float filtredMaxT = tMax;
+
 // Створення обʼєкта сенсору 
 Adafruit_AMG88xx amg;
 
@@ -238,20 +248,41 @@ void loop() {
 
     amg.readPixels(pixels); // Зчитування масиву температур 
 
-    float minT = 999, maxT = -999, sumT = 0;
+    float rawMinT = 999;
+    float rawMaxT = -999;
+    float sumT = 0;
+
     float centerT = pixels[4 * gridSize + 4];
 
     for (int i = 0; i < 64; i++){
       sumT += pixels[i];
-      if (pixels [i] < minT){
-        minT = pixels[i];
+      if (pixels [i] < rawMinT){
+        rawMinT = pixels[i];
       }
-      if (pixels [i] > maxT){
-        maxT = pixels[i];
+      if (pixels [i] > rawMaxT){
+        rawMaxT = pixels[i];
       }
     }
 
     float avgT = sumT / 64;
+    float range = rawMaxT - rawMinT;
+
+    float desiredMin = 0;
+    float desiredMax = 0;
+
+    if (range < minWindowSize){
+      desiredMin = antiNoise + avgT - minWindowSize / 2.0;
+      desiredMax = avgT + minWindowSize / 2.0;
+    }else if (range > maxWindowSize){
+      desiredMin = rawMaxT - maxWindowSize;
+      desiredMax = rawMaxT;
+    }else {
+      desiredMin = rawMinT;
+      desiredMax = rawMaxT;
+    }
+
+    tMin = 0.9 * tMin + 0.1 * desiredMin;
+    tMax = 0.9 * tMax + 0.1 * desiredMax;
 
     for (int y = 0; y < gridSize; y++) {
       for (int x = 0; x < gridSize; x++) {
@@ -263,13 +294,13 @@ void loop() {
 
         if (yPixel >= usableHeight) continue;
 
-        uint16_t colour = mapTemperatureToColor(temp);
+        uint16_t colour = mapTemperatureToColor(temp, tMin, tMax);
 
         tft.fillRect(x * boxSize, y * boxSize, boxSize, boxSize, colour);
       }
     }
     
-    drawTemp(minT, maxT, avgT, centerT);
+    drawTemp(rawMinT, rawMaxT, avgT, centerT);
 
   }
 
@@ -285,10 +316,7 @@ void loop() {
   
 }
 
-uint16_t mapTemperatureToColor(float temp) {
-  //  Межі градієнту
-  float tMin = 22.0;
-  float tMax = 32.0;
+uint16_t mapTemperatureToColor(float temp, float tMin, float tMax) {
 
   // Обмеження діапазону
   if (temp < tMin) temp = tMin;
@@ -351,7 +379,7 @@ void drawSubmenu (){
   }
 }
 
-void drawTemp (float minT, float maxT, float avgT, float centerT){
+void drawTemp (float rawMinT, float rawMaxT, float avgT, float centerT){
   tft.setTextColor(ST7735_WHITE);
 
     if (currentTempMode == 0) {
@@ -364,10 +392,10 @@ void drawTemp (float minT, float maxT, float avgT, float centerT){
     tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
     tft.setCursor(74, 130);
     tft.print("Min:");
-    tft.print(minT, 1);
+    tft.print(rawMinT, 1);
     tft.setCursor(74, 140);
     tft.print("Max:");
-    tft.print(maxT, 1);
+    tft.print(rawMaxT, 1);
     tft.setCursor(74, 150);
     tft.print("Avg:");
     tft.print(avgT, 1);
@@ -377,7 +405,7 @@ void drawTemp (float minT, float maxT, float avgT, float centerT){
     // Center Temp
     tft.setTextSize(2);
     tft.setTextColor(ST7735_YELLOW, ST7735_BLACK);
-    tft.setCursor(40, 140); // нижній правий кут
+    tft.setCursor(40, 140);
     tft.print(centerT, 1);
   }
 
@@ -387,10 +415,10 @@ void drawTemp (float minT, float maxT, float avgT, float centerT){
     tft.setTextColor(ST7735_WHITE, ST7735_BLACK);
     tft.setCursor(74, 130);
     tft.print("Min:");
-    tft.print(minT, 1);
+    tft.print(rawMinT, 1);
     tft.setCursor(74, 140);
     tft.print("Max:");
-    tft.print(maxT, 1);
+    tft.print(rawMaxT, 1);
     tft.setCursor(74, 150);
     tft.print("Avg:");
     tft.print(avgT, 1);
