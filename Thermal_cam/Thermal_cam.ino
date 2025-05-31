@@ -248,6 +248,14 @@ void loop() {
 
     amg.readPixels(pixels); // Зчитування масиву температур 
 
+    float sortedPixels [64];
+    memcpy(sortedPixels, pixels, sizeof(pixels));
+
+    bubbleSort(sortedPixels, 64);
+
+    float qLow = getQuantile(sortedPixels, 64, 0.2);
+    float qHigh = getQuantile(sortedPixels, 64, 0.95);
+
     float rawMinT = 999;
     float rawMaxT = -999;
     float sumT = 0;
@@ -265,7 +273,7 @@ void loop() {
     }
 
     float avgT = sumT / 64;
-    float range = rawMaxT - rawMinT;
+    float range = qHigh - qLow;
 
     float desiredMin = 0;
     float desiredMax = 0;
@@ -274,11 +282,11 @@ void loop() {
       desiredMin = antiNoise + avgT - minWindowSize / 2.0;
       desiredMax = avgT + minWindowSize / 2.0;
     }else if (range > maxWindowSize){
-      desiredMin = rawMaxT - maxWindowSize;
-      desiredMax = rawMaxT;
+      desiredMin = qHigh - maxWindowSize;
+      desiredMax = qHigh;
     }else {
-      desiredMin = rawMinT;
-      desiredMax = rawMaxT;
+      desiredMin = qLow;
+      desiredMax = qHigh;
     }
 
     tMin = 0.9 * tMin + 0.1 * desiredMin;
@@ -314,6 +322,23 @@ void loop() {
     btnPressed_right = false;
   }
   
+}
+
+void bubbleSort (float arr[], int n) {
+  for (int i = 0; i < n-1; i++){
+    for (int j = 0; j < n-i-1; j++){
+      if (arr[j] > arr[j+1]){
+        float temp = arr[j];
+        arr[j] = arr[j+1];
+        arr[j+1] = temp;
+      }
+    }
+  }
+}
+
+float getQuantile (float arr[],int n, float q){
+  int index = (int)(q*(n-1));
+  return arr[index];
 }
 
 uint16_t mapTemperatureToColor(float temp, float tMin, float tMax) {
